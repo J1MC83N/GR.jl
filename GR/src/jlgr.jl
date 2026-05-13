@@ -87,7 +87,9 @@ const fonts = Dict(
     "DejaVuSans" => 233,
     "STIXTwoMath" => 234)
 
-const distinct_cmap = (0, 1, 984, 987, 989, 983, 994, 988)
+# First 8 color indices of the C-level auto-cycle, derived from
+# predef_colors[20] = {9,2,0,1,16,3,15,8,...} via color = 980 + predef_colors[i].
+const distinct_cmap = (989, 982, 980, 981, 996, 983, 995, 988)
 
 const theta_zero_location = Dict(
     "E" => 0, "N" => π/2, "W" => π, "S" => 1.5π)
@@ -767,6 +769,25 @@ hasline(mask) = ( mask == 0x00 || (mask & GR.SPEC_LINE != 0) )
 hasmarker(mask) = ( mask & GR.SPEC_MARKER != 0 )
 hascolor(mask) = ( mask & GR.SPEC_COLOR != 0 )
 
+# Extended uselinespec that additionally accepts digits '1'-'8' in the fmt string
+# to explicitly select from the first 8 auto-cycle palette colors (distinct_cmap),
+# which match the colors gr_uselinespec cycles through automatically.
+# The digit is stripped before the remaining spec is passed to GR.uselinespec;
+# the resolved color index is then applied to both line and marker color state.
+function uselinespec_ex(spec)
+    idx = findfirst(c -> '1' <= c <= '8', spec)
+    if idx !== nothing
+        d = Int(spec[idx]) - Int('0')
+        mask = GR.uselinespec(spec[1:idx-1] * spec[idx+1:end])
+        colorind = distinct_cmap[d]
+        GR.setlinecolorind(colorind)
+        GR.setmarkercolorind(colorind)
+        return mask
+    else
+        return GR.uselinespec(spec)
+    end
+end
+
 function draw_legend(plt=plt[])
     w, h = legend_size()
     viewport = plt.kvs[:viewport]
@@ -812,7 +833,7 @@ function draw_legend(plt=plt[])
             py -= 0.5 * dy
         end
         GR.savestate()
-        mask = GR.uselinespec(spec)
+        mask = uselinespec_ex(spec)
         hasline(mask) && GR.polyline([px - 0.07, px - 0.01], [py, py])
         hasmarker(mask) && GR.polymarker([px - 0.06, px - 0.02], [py, py])
         GR.restorestate()
@@ -1413,7 +1434,7 @@ function plot_data(flag=true, plt=plt[])
             GR.settransparency(plt.kvs[:alpha])
         end
         if kind === :line
-            mask = GR.uselinespec(spec)
+            mask = uselinespec_ex(spec)
             if c !== nothing
                 linewidth = get(plt.kvs, :linewidth, 1)
                 z = ones(length(x)) * linewidth
@@ -1433,7 +1454,7 @@ function plot_data(flag=true, plt=plt[])
                 end
             end
         elseif kind === :stairs
-            mask = GR.uselinespec(spec)
+            mask = uselinespec_ex(spec)
             if hasline(mask)
                 where = get(plt.kvs, :where, "mid")
                 if where == "pre"
@@ -1492,7 +1513,7 @@ function plot_data(flag=true, plt=plt[])
             end
         elseif kind === :stem
             GR.setmarkertype(GR.MARKERTYPE_SOLID_CIRCLE)
-            GR.uselinespec(spec)
+            uselinespec_ex(spec)
             for i = 1:length(y)
                 GR.polyline([x[i]; x[i]], [0; y[i]])
                 GR.polymarker([x[i]], [y[i]])
@@ -1676,7 +1697,7 @@ function plot_data(flag=true, plt=plt[])
         elseif kind === :isosurface
             plot_iso(c)
         elseif kind === :polar
-            GR.uselinespec(spec)
+            uselinespec_ex(spec)
             plot_polar(x, y)
             draw_polar_axes(2)
         elseif kind === :trisurf

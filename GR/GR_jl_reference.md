@@ -106,7 +106,20 @@ plot(x, y, c_vals)   # c_vals is Float vector, same length as x/y
 - Set colormap with `GR.setcolormap(GR.COLORMAP_VIRIDIS)` etc. (48 built-in colormaps)
 
 ### Option 3: Default auto-cycling
-- Driven by C `gr_uselinespec`; cycles through color indices `(0, 1, 984, 987, 989, 983, 994, 988)`
+- Driven by C `gr_uselinespec`; uses `color = 980 + predef_colors[i]` cycling through 20 entries
+- First 8 color indices: `(989, 982, 980, 981, 996, 983, 995, 988)`
+
+| Step | Index | Hex | Color |
+|---|---|---|---|
+| 1 | 989 | `#00538a` | dark blue |
+| 2 | 982 | `#ff6800` | orange |
+| 3 | 980 | `#ffb300` | amber |
+| 4 | 981 | `#803e75` | purple |
+| 5 | 996 | `#93aa00` | olive green |
+| 6 | 983 | `#5aa3c0` | steel blue |
+| 7 | 995 | `#7f180d` | dark red |
+| 8 | 988 | `#f6768e` | pink |
+
 - Query actual RGB: `GR.inqcolor(idx)` returns packed `0x00RRGGBB`
 
 ### Option 4: Color schemes
@@ -122,10 +135,10 @@ usecolorscheme(n)  # n = 1, 2, 3, or 4
 
 ### Option 5: Pre-load custom cycling colors (before `plot`)
 ```julia
-GR.setcolorrep(0, r, g, b)   # 1st series color
-GR.setcolorrep(1, r, g, b)   # 2nd series color
-GR.setcolorrep(984, r, g, b) # 3rd series color
-# ... indices: (0, 1, 984, 987, 989, 983, 994, 988)
+GR.setcolorrep(989, r, g, b)  # 1st series color
+GR.setcolorrep(982, r, g, b)  # 2nd series color
+GR.setcolorrep(980, r, g, b)  # 3rd series color
+# ... indices: (989, 982, 980, 981, 996, 983, 995, 988)
 ```
 r, g, b are floats in [0.0, 1.0].
 
