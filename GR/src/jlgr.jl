@@ -63,7 +63,7 @@ mainloop
 
 const PlotArg = Union{AbstractString, AbstractVector, AbstractMatrix, Function}
 
-const kw_args = [:accelerate, :algorithm, :alpha, :backgroundcolor, :barwidth, :baseline, :clabels, :clines, :color, :colormap, :figsize, :font, :fontscale, :isovalue, :labels, :levels, :location, :nbins, :rotation, :size, :tilt, :title, :where, :xflip, :xform, :xlabel, :xlim, :xlog, :yflip, :ylabel, :ylim, :ylog, :zflip, :zlabel, :zlim, :zlog, :clim, :subplot, :linewidth, :grid, :scale, :theta_direction, :theta_zero_location, :dpi, :keepaspect, :markersize, :borderwidth, :charheight]
+const kw_args = [:accelerate, :algorithm, :alpha, :backgroundcolor, :barwidth, :baseline, :clabels, :clines, :color, :colormap, :figsize, :font, :fontscale, :isovalue, :labels, :levels, :location, :nbins, :nlabels, :rotation, :size, :tilt, :title, :where, :xflip, :xform, :xlabel, :xlim, :xlog, :yflip, :ylabel, :ylim, :ylog, :zflip, :zlabel, :zlim, :zlog, :clim, :subplot, :linewidth, :grid, :scale, :theta_direction, :theta_zero_location, :dpi, :keepaspect, :markersize, :borderwidth, :charheight]
 
 const grm_aliases = Dict(
     :nbins => :num_bins, :xform => :transform, :xlim => :x_lim, :ylim => :y_lim, :zlim => :z_lim, :clim => :c_lim, :xlabel => :x_label, :ylabel => :y_label, :zlabel => :z_label, :xflip => :x_flip, :yflip => :y_flip, :zflip => :z_flip, :xlog => :x_log, :ylog => :y_log, :zlog => :z_log)
@@ -753,7 +753,7 @@ function legend_size(plt=plt[])
     GR.setscale(0)
     w = 0
     h = 0
-    num_labels = length(plt.kvs[:labels])
+    num_labels = min(length(plt.kvs[:labels]), get(plt.kvs, :nlabels, typemax(Int)))
     for i in 1:num_labels
         label = plt.kvs[:labels][i]
         tbx, tby = inqtext(0, 0, label)
@@ -792,7 +792,7 @@ function draw_legend(plt=plt[])
     w, h = legend_size()
     viewport = plt.kvs[:viewport]
     location = get(plt.kvs, :location, 1)
-    num_labels = length(plt.kvs[:labels])
+    num_labels = min(length(plt.kvs[:labels]), get(plt.kvs, :nlabels, typemax(Int)))
     GR.savestate()
     GR.selntran(0)
     GR.setscale(0)
@@ -826,6 +826,7 @@ function draw_legend(plt=plt[])
     i = 1
     GR.uselinespec(" ")
     for (x, y, z, c, spec) in plt.args
+        i > num_labels && break
         if i <= num_labels
             label = plt.kvs[:labels][i]
             tbx, tby = inqtext(0, 0, label)

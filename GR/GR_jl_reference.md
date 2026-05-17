@@ -58,6 +58,9 @@ Passed to the C-level `GR.uselinespec(spec)`. Combines color, line style, and ma
 | `m` | magenta |
 | `y` | yellow |
 | `w` | white |
+| `1`–`8` | auto-cycle colors 1–8 (see below) |
+
+Using a digit selects the same color that would be used for that series position in an unstyled multi-series plot. Combines freely with line style and marker: `"2--"`, `"5o"`, `"3-+"`, etc.
 
 ### Line Styles
 | Char | Style |
@@ -168,9 +171,10 @@ isosurface(V, color=(0.8, 0.2, 0.1))
 |---|---|---|---|
 | `alpha` | — | all | Transparency [0.0–1.0] for all series in the call |
 | `font` | `"CMUSerif-Math"` | all | Font name (see `GR.jlgr.fonts` dict for valid names) |
+| `fontscale` | `1.0` | all | Scale factor applied to the auto-computed font size; `1.0` = default, `2.0` = double. Plot margins adjust automatically. |
 | `linewidth` | `1` | line, stairs, stem | Line width scale factor |
-| `markersize` | `1` | line (+markers), scatter | Marker size scale factor *(newer versions only)* |
-| `borderwidth` | `1` | line (+markers) | Marker border width *(newer versions only)* |
+| `markersize` | `1` | line (+markers), scatter | Marker size scale factor |
+| `borderwidth` | `1` | line (+markers) | Marker border width |
 | `grid` | `true` | 2D/3D | Show/hide grid lines |
 | `colormap` | `COLORMAP_VIRIDIS` | heatmap, contour, surface, scatter3... | Colormap index; use `GR.COLORMAP_*` constants |
 
@@ -208,6 +212,7 @@ OPTION_X_LN=512, OPTION_Y_LN=1024, OPTION_Z_LN=2048
 |---|---|---|
 | `labels` | — | `["label1", "label2", ...]` — enables legend for line/stairs/scatter/stem |
 | `location` | `1` | Legend position (1=upper right, 2=upper left, 3=lower left, 4=lower right, 11–13=outside right) |
+| `nlabels` | `length(labels)` | Maximum number of series entries shown in the legend. Useful when plotting many series but only labelling the first few. |
 
 ### Contour / Heatmap
 
@@ -289,15 +294,22 @@ drawgrid(flag)                  # same effect as grid= kwarg
 
 ## Font Size
 
-**There is no kwarg for font size.** It is computed automatically as `max(0.018 * diag, 0.012)` (2D) or `max(0.024 * diag, 0.012)` (3D) where `diag` is the viewport diagonal. To get larger text, make the figure larger:
+Font size is computed automatically as `max(0.018 * diag, 0.012)` (2D) or `max(0.024 * diag, 0.012)` (3D) where `diag` is the viewport diagonal.
+
+**Recommended: use `fontscale`** — a kwarg that multiplies the auto-computed size and adjusts margins automatically:
 
 ```julia
-figure(1200, 900, 100)
-# or
+plot(x, y, fontscale=1.5)   # 50% larger text, margins expand to fit
+plot(x, y, fontscale=0.8)   # slightly smaller
+```
+
+**Alternative: make the figure larger** (increases physical resolution without changing the relative font size):
+
+```julia
 plot(x, y, size=(1200, 900))
 ```
 
-For a one-off override: call `GR.setcharheight(h)` after `plot` (before `GR.updatews()`), where `h` is a fraction of plot height (e.g. `0.03`). Note: this will be overwritten on the next `plot` call.
+**Low-level override:** `charheight=h` sets the absolute char height directly (a fraction of viewport diagonal, e.g. `0.03`). Stacks with `fontscale` if both are provided. Can also be called as `GR.setcharheight(h)` after `plot` but that is overwritten on the next call.
 
 ---
 
@@ -375,3 +387,67 @@ GR.inqcolor(idx)            # query color at index, returns 0x00RRGGBB
 savefig("file.png")         # save current figure (supports png, pdf, svg, etc.)
 gcf()                       # get current figure (deep copy of PlotObject)
 ```
+
+---
+
+## Updates
+
+Changes added to this fork of `jlgr.jl` beyond the upstream version.
+
+### 1. `fontscale` — relative font size kwarg
+
+```julia
+plot(x, y, title="hello", xlabel="x", fontscale=1.5)
+```
+
+- **Kwarg:** `fontscale` (Float, default `1.0`)
+- Multiplies the auto-computed char height at every rendering site (2D axes, 3D axes, polar axes, colorbar).
+- Plot margins scale proportionally so tick labels, axis labels, and the title never clip:
+  - Left/bottom base margins scale as `0.075 * fontscale` (tick label space).
+  - Axis-label margins (`ylabel`, `xlabel`) and title margin stay fixed — the growing base already provides clearance.
+- Stacks with the low-level `charheight` kwarg: if both are set, `charheight` is used as the base and `fontscale` multiplies it.
+
+### 2. Digit colors `'1'`–`'8'` in fmt string
+
+```julia
+plot(x1, y1, "1",     # same blue as 1st auto-cycle series
+     x2, y2, "2--",   # orange dashed
+     x3, y3, "3o",    # amber with circle markers
+     x4, y4, "4-+")   # purple with plus markers
+```
+
+Digits `'1'`–`'8'` select from the 8 auto-cycle palette colors in order, matching exactly what an unstyled multi-series plot would use. The digit is stripped before the rest of the spec is passed to C, so it combines freely with any line style or marker character.
+
+| Digit | GR index | Hex | Color |
+|---|---|---|---|
+| `1` | 989 | `#00538a` | dark blue |
+| `2` | 982 | `#ff6800` | orange |
+| `3` | 980 | `#ffb300` | amber |
+| `4` | 981 | `#803e75` | purple |
+| `5` | 996 | `#93aa00` | olive green |
+| `6` | 983 | `#5aa3c0` | steel blue |
+| `7` | 995 | `#7f180d` | dark red |
+| `8` | 988 | `#f6768e` | pink |
+
+### 3. `nlabels` — limit legend entries
+
+```julia
+plot(x1,y1, x2,y2, x3,y3, x4,y4,
+     labels=["A","B","C","D"],
+     nlabels=2)   # legend shows only A and B
+```
+
+- **Kwarg:** `nlabels` (Int, default `length(labels)`)
+- Caps the number of series entries rendered in the legend box. Series beyond `nlabels` are plotted normally but have no legend entry.
+- The legend box is sized to fit exactly `nlabels` rows, so the outside-right viewport cutout (locations 11–13) is also correctly sized.
+- If `nlabels ≥ length(labels)` the behaviour is identical to omitting it.
+
+### Correction: auto-cycle color indices
+
+The `distinct_cmap` constant (used by `usecolorscheme` to remap the auto-cycle palette) previously held incorrect indices `(0, 1, 984, 987, 989, 983, 994, 988)`. The correct values, derived directly from the C source (`predef_colors` array in `gr.c`, offset by 980) are:
+
+```julia
+const distinct_cmap = (989, 982, 980, 981, 996, 983, 995, 988)
+```
+
+This also fixes `usecolorscheme(n)` for schemes 2–4, which was remapping the wrong color slots.
